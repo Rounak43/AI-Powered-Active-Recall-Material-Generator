@@ -20,9 +20,6 @@ const sectionMotion = {
 
 const settingsTabs = [
   'Appearance',
-  'Notifications',
-  'Privacy & Security',
-  'AI Preferences',
   'Danger Zone'
 ];
 

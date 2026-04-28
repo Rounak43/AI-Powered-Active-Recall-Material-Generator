@@ -782,6 +782,7 @@ const Profile = () => {
         </div>
       </GlassCard>
 
+{/* 
       <GlassCard className="p-4 md:p-5 space-y-3">
         <div>
           <h2 className="font-display text-lg text-white">Your API Key</h2>
@@ -829,6 +830,7 @@ const Profile = () => {
           </div>
         </div>
       </GlassCard>
+      */}
 
       <GlassCard className="p-4 md:p-5 space-y-3 border border-red-500/40 bg-red-500/10">
         <h2 className="font-display text-base text-white">🗑️ Danger Zone</h2>

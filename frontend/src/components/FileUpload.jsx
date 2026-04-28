@@ -1,13 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CloudUpload, AlertCircle, RefreshCcw, FileText } from 'lucide-react';
-import axios from 'axios';
 import GlassCard from './GlassCard';
 import SummaryResult from './SummaryResult';
 import { useAuth } from '../context/AuthContext';
 import { saveSummary } from '../services/dataService';
+import { analyzeFull } from '../services/analyzeService';
 
-const BACKEND_URL = 'http://127.0.0.1:5000';
 const ACCEPTED_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -45,14 +44,13 @@ const FileUpload = () => {
     setResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await axios.post(`${BACKEND_URL}/api/summarize`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const data = await analyzeFull(file, {
+        mode: 'medium',
+        flashcardCount: 10,
+        quizCount: 5
       });
 
-      setResult(response.data);
+      setResult(data);
 
       // Save to Firebase
       if (user?.uid) {
@@ -60,21 +58,19 @@ const FileUpload = () => {
           await saveSummary(user.uid, {
             type: 'pdf',
             title: file.name,
-            summary: response.data.summary,
-            detailedSummary: response.data.detailedSummary,
-            keyConcepts: response.data.keyConcepts || [],
-            words: response.data.extractedTextLength ? Math.round(response.data.extractedTextLength / 6) : 0, // Approx words
+            summary: data.summary,
+            detailedSummary: data.detailedSummary,
+            keyConcepts: data.keyConcepts || data.keywords || [],
+            flashcards: data.flashcards || [],
+            quizQuestions: data.quizQuestions || [],
+            words: data.summary_word_count || (data.summary ? data.summary.split(' ').length : 0),
           });
         } catch (saveErr) {
           console.error("Failed to save summary to history:", saveErr);
         }
       }
     } catch (err) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.message ||
-        'An unexpected error occurred. Make sure the backend is running.';
-      setError(msg);
+      setError(err.message || 'An unexpected error occurred. Make sure the backend is running.');
     } finally {
       setLoading(false);
     }

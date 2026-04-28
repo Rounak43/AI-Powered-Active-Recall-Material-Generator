@@ -197,6 +197,7 @@ const Navbar = () => {
                       >
                         👤 Profile
                       </button>
+{/* 
                       <button
                         onClick={() => { setAvatarOpen(false); navigate('/api-admin'); }}
                         className={`w-full px-3 py-2 text-left text-sm font-body transition-colors cursor-pointer ${
@@ -205,6 +206,7 @@ const Navbar = () => {
                       >
                         🔑 API Admin
                       </button>
+                      */}
                       <button
                         onClick={() => { setAvatarOpen(false); navigate('/settings'); }}
                         className={`w-full px-3 py-2 text-left text-sm font-body transition-colors cursor-pointer ${

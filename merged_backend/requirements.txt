@@ -1,0 +1,34 @@
+# ══════════════════════════════════════════════════════════════════
+# Merged Backend Requirements — Python 3.10+
+# ══════════════════════════════════════════════════════════════════
+
+# ── Web framework ──────────────────────────────────────────────────
+flask==3.0.3
+flask-cors==4.0.1
+python-dotenv==1.0.1
+gunicorn==22.0.0
+
+# ── PDF/DOCX extraction ────────────────────────────────────────────
+pdfplumber==0.11.1
+PyMuPDF==1.24.3
+python-docx==1.1.2
+
+# ── NLP core ──────────────────────────────────────────────────────
+nltk==3.8.1
+spacy==3.7.5
+# After install: python -m spacy download en_core_web_sm
+
+# ── ML / scoring ──────────────────────────────────────────────────
+scikit-learn==1.4.2
+numpy==1.26.4
+networkx==3.3
+
+# ── Keyword extraction ─────────────────────────────────────────────
+yake==0.4.8
+rake-nltk==1.0.6
+
+# ── Optional: local transformer for abstractive refinement ─────────
+# Uncomment if you want the /api/summarize abstractive refinement mode
+# transformers==4.41.0
+# torch==2.3.0
+# sentencepiece==0.2.0

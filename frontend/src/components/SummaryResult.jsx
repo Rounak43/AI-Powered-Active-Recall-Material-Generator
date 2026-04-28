@@ -1,10 +1,25 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
-import { Copy, ChevronDown, ChevronUp, FileText, Hash, Layers, Tag, Download } from 'lucide-react';
+import { 
+  Copy, 
+  ChevronDown, 
+  ChevronUp, 
+  FileText, 
+  Hash, 
+  Layers, 
+  Tag, 
+  Download,
+  BookOpen,
+  BrainCircuit,
+  HelpCircle
+} from 'lucide-react';
 import GlassCard from './GlassCard';
+import FlashcardSection from './FlashcardSection';
+import QuizSection from './QuizSection';
 
 const SummaryResult = ({ data }) => {
+  const [activeTab, setActiveTab] = useState('summary');
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [detailedExpanded, setDetailedExpanded] = useState(false);
@@ -20,7 +35,9 @@ const SummaryResult = ({ data }) => {
     extractedTextLength,
     textLength,
     chunkCount,
-    title
+    title,
+    flashcards,
+    quizQuestions
   } = data;
 
   const typeLabel = fileType
@@ -106,7 +123,7 @@ const SummaryResult = ({ data }) => {
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(10);
-        const conceptText = keyConcepts.join(' • ');
+        const conceptText = Array.isArray(keyConcepts) ? keyConcepts.join(' • ') : '';
         const conceptLines = doc.splitTextToSize(conceptText, contentWidth);
         doc.text(conceptLines, margin, y);
       }
@@ -137,143 +154,201 @@ const SummaryResult = ({ data }) => {
     'linear-gradient(135deg,#a855f7,#ec4899)',
   ];
 
+  const TABS = [
+    { id: 'summary', label: 'Summary', icon: <BookOpen className="h-4 w-4" /> },
+    { id: 'flashcards', label: 'Flashcards', icon: <Layers className="h-4 w-4" />, count: flashcards?.length },
+    { id: 'quiz', label: 'Quiz', icon: <BrainCircuit className="h-4 w-4" />, count: quizQuestions?.length },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 40 }}
       transition={{ duration: 0.45, ease: 'easeOut' }}
-      className="space-y-5"
+      className="space-y-6"
     >
-      {/* Meta stats bar */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          {
-            icon: <FileText className="h-4 w-4" />,
-            label: 'Type',
-            value: typeLabel,
-            color: 'text-[#6C47FF]'
-          },
-          {
-            icon: <Hash className="h-4 w-4" />,
-            label: 'Characters',
-            value: charLength.toLocaleString(),
-            color: 'text-[#00D4FF]'
-          },
-          {
-            icon: <Layers className="h-4 w-4" />,
-            label: 'Chunks',
-            value: chunkCount ?? '—',
-            color: 'text-[#FF47A3]'
-          }
-        ].map((stat) => (
-          <GlassCard key={stat.label} className="p-3 flex flex-col items-center gap-1 text-center">
-            <span className={stat.color}>{stat.icon}</span>
-            <p className="text-[11px] font-body text-muted">{stat.label}</p>
-            <p className="text-sm font-display text-white">{stat.value}</p>
-          </GlassCard>
+      {/* Navigation Tabs */}
+      <div className="flex p-1 gap-1 bg-black/40 border border-white/5 rounded-2xl">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-display transition-all cursor-pointer ${
+              activeTab === tab.id
+                ? 'text-white'
+                : 'text-[#8b8fa8] hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+            {tab.count > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-[#6C47FF] text-white' : 'bg-white/10 text-muted'}`}>
+                {tab.count}
+              </span>
+            )}
+            {activeTab === tab.id && (
+              <motion.div
+                layoutId="active-result-tab"
+                className="absolute inset-0 bg-[#6C47FF]/10 border border-[#6C47FF]/20 rounded-xl -z-10"
+                transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+          </button>
         ))}
       </div>
 
-      {/* Summary card */}
-      <GlassCard className="p-5 md:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">📝</span>
-            <h2 className="font-display text-lg text-white">Summary</h2>
-          </div>
-          <div className="flex items-center gap-2 text-[11px] font-body text-muted">
-            <span className="rounded-full bg-black/40 border border-[rgba(108,71,255,0.3)] px-2 py-0.5">
-              ~{Math.round(summary.split(' ').length)} words
-            </span>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1 rounded-full border border-[rgba(108,71,255,0.3)] bg-black/40 px-2.5 py-1 text-[11px] text-muted hover:text-white hover:border-[#6C47FF]/80 cursor-pointer transition-all"
-            >
-              <Copy className="h-3 w-3" />
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="inline-flex items-center gap-1 rounded-full border border-[rgba(108,71,255,0.3)] bg-black/40 px-2.5 py-1 text-[11px] text-muted hover:text-white hover:border-[#6C47FF]/80 cursor-pointer transition-all disabled:opacity-50"
-            >
-              <Download className={downloading ? "h-3 w-3 animate-pulse" : "h-3 w-3"} />
-              <span>{downloading ? 'Downloading...' : 'PDF'}</span>
-            </button>
-          </div>
-        </div>
-        <p className="font-body text-sm md:text-[15px] leading-relaxed text-white/90">
-          {summary}
-        </p>
-      </GlassCard>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === 'summary' && (
+            <div className="space-y-5">
+              {/* Meta stats bar */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    icon: <FileText className="h-4 w-4" />,
+                    label: 'Type',
+                    value: typeLabel,
+                    color: 'text-[#6C47FF]'
+                  },
+                  {
+                    icon: <Hash className="h-4 w-4" />,
+                    label: 'Characters',
+                    value: charLength.toLocaleString(),
+                    color: 'text-[#00D4FF]'
+                  },
+                  {
+                    icon: <Layers className="h-4 w-4" />,
+                    label: 'Chunks',
+                    value: chunkCount ?? '—',
+                    color: 'text-[#FF47A3]'
+                  }
+                ].map((stat) => (
+                  <GlassCard key={stat.label} className="p-3 flex flex-col items-center gap-1 text-center">
+                    <span className={stat.color}>{stat.icon}</span>
+                    <p className="text-[11px] font-body text-muted">{stat.label}</p>
+                    <p className="text-sm font-display text-white">{stat.value}</p>
+                  </GlassCard>
+                ))}
+              </div>
 
-      {/* Detailed summary (collapsible) */}
-      {detailedSummary && (
-        <GlassCard className="p-5 md:p-6">
-          <button
-            type="button"
-            onClick={() => setDetailedExpanded((v) => !v)}
-            className="flex w-full items-center justify-between cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📖</span>
-              <h2 className="font-display text-lg text-white">Detailed Summary</h2>
-            </div>
-            {detailedExpanded ? (
-              <ChevronUp className="h-4 w-4 text-muted" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted" />
-            )}
-          </button>
-          <AnimatePresence>
-            {detailedExpanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="overflow-hidden"
-              >
-                <p className="font-body text-sm leading-relaxed text-white/80 mt-4">
-                  {detailedSummary}
+              {/* Summary card */}
+              <GlassCard className="p-5 md:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📝</span>
+                    <h2 className="font-display text-lg text-white">Summary</h2>
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] font-body text-muted">
+                    <span className="rounded-full bg-black/40 border border-[rgba(108,71,255,0.3)] px-2 py-0.5">
+                      ~{Math.round(summary?.split(' ').length || 0)} words
+                    </span>
+                    <button
+                      onClick={handleCopy}
+                      className="inline-flex items-center gap-1 rounded-full border border-[rgba(108,71,255,0.3)] bg-black/40 px-2.5 py-1 text-[11px] text-muted hover:text-white hover:border-[#6C47FF]/80 cursor-pointer transition-all"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={handleDownload}
+                      disabled={downloading}
+                      className="inline-flex items-center gap-1 rounded-full border border-[rgba(108,71,255,0.3)] bg-black/40 px-2.5 py-1 text-[11px] text-muted hover:text-white hover:border-[#6C47FF]/80 cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      <Download className={downloading ? "h-3 w-3 animate-pulse" : "h-3 w-3"} />
+                      <span>{downloading ? 'Downloading...' : 'PDF'}</span>
+                    </button>
+                  </div>
+                </div>
+                <p className="font-body text-sm md:text-[15px] leading-relaxed text-white/90">
+                  {summary}
                 </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </GlassCard>
-      )}
+              </GlassCard>
 
-      {/* Key concepts */}
-      {keyConcepts && keyConcepts.length > 0 && (
-        <GlassCard className="p-5 md:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🏷️</span>
-              <h2 className="font-display text-lg text-white">Key Concepts</h2>
+              {/* Detailed summary (collapsible) */}
+              {detailedSummary && (
+                <GlassCard className="p-5 md:p-6">
+                  <button
+                    type="button"
+                    onClick={() => setDetailedExpanded((v) => !v)}
+                    className="flex w-full items-center justify-between cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📖</span>
+                      <h2 className="font-display text-lg text-white">Detailed Summary</h2>
+                    </div>
+                    {detailedExpanded ? (
+                      <ChevronUp className="h-4 w-4 text-muted" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted" />
+                    )}
+                  </button>
+                  <AnimatePresence>
+                    {detailedExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <p className="font-body text-sm leading-relaxed text-white/80 mt-4 whitespace-pre-wrap">
+                          {detailedSummary}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </GlassCard>
+              )}
+
+              {/* Key concepts */}
+              {keyConcepts && keyConcepts.length > 0 && (
+                <GlassCard className="p-5 md:p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">🏷️</span>
+                      <h2 className="font-display text-lg text-white">Key Concepts</h2>
+                    </div>
+                    <span className="rounded-full bg-black/40 border border-[rgba(108,71,255,0.3)] px-2 py-0.5 text-[11px] font-body text-muted">
+                      {keyConcepts.length} concepts
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {keyConcepts.map((concept, index) => (
+                      <motion.span
+                        key={concept}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.04 }}
+                        whileHover={{ scale: 1.08 }}
+                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-body text-white cursor-default shadow-lg"
+                        style={{ backgroundImage: gradients[index % gradients.length] }}
+                      >
+                        <Tag className="h-3 w-3" />
+                        {concept}
+                      </motion.span>
+                    ))}
+                  </div>
+                </GlassCard>
+              )}
             </div>
-            <span className="rounded-full bg-black/40 border border-[rgba(108,71,255,0.3)] px-2 py-0.5 text-[11px] font-body text-muted">
-              {keyConcepts.length} concepts
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {keyConcepts.map((concept, index) => (
-              <motion.span
-                key={concept}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.04 }}
-                whileHover={{ scale: 1.08 }}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-body text-white cursor-default"
-                style={{ backgroundImage: gradients[index % gradients.length] }}
-              >
-                <Tag className="h-3 w-3" />
-                {concept}
-              </motion.span>
-            ))}
-          </div>
-        </GlassCard>
-      )}
+          )}
+
+          {activeTab === 'flashcards' && (
+            <FlashcardSection flashcards={flashcards} />
+          )}
+
+          {activeTab === 'quiz' && (
+            <QuizSection questions={quizQuestions} />
+          )}
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 };

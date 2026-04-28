@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
-import axios from 'axios';
 import SummaryResult from './SummaryResult';
 import { useAuth } from '../context/AuthContext';
 import { saveSummary } from '../services/dataService';
+import { analyzeFullText } from '../services/analyzeService';
 
-const BACKEND_URL = 'http://127.0.0.1:5000';
 const MIN_CHARS = 50;
 
 const TextInputSummarizer = () => {
@@ -26,12 +25,12 @@ const TextInputSummarizer = () => {
     setResult(null);
 
     try {
-      const response = await axios.post(
-        `${BACKEND_URL}/api/summarize-text`,
-        { text },
-        { headers: { 'Content-Type': 'application/json' } }
-      );
-      setResult(response.data);
+      const data = await analyzeFullText(text, {
+        mode: 'medium',
+        flashcardCount: 10,
+        quizCount: 5
+      });
+      setResult(data);
 
       // Save to Firebase
       if (user?.uid) {
@@ -39,21 +38,19 @@ const TextInputSummarizer = () => {
           await saveSummary(user.uid, {
             type: 'text',
             title: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
-            summary: response.data.summary,
-            detailedSummary: response.data.detailedSummary,
-            keyConcepts: response.data.keyConcepts || [],
-            words: Math.round(text.length / 6),
+            summary: data.summary,
+            detailedSummary: data.detailedSummary,
+            keyConcepts: data.keyConcepts || data.keywords || [],
+            flashcards: data.flashcards || [],
+            quizQuestions: data.quizQuestions || [],
+            words: data.summary_word_count || Math.round(text.length / 6),
           });
         } catch (saveErr) {
           console.error("Failed to save summary to history:", saveErr);
         }
       }
     } catch (err) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.message ||
-        'An unexpected error occurred. Make sure the backend is running.';
-      setError(msg);
+      setError(err.message || 'An unexpected error occurred. Make sure the backend is running.');
     } finally {
       setLoading(false);
     }
